@@ -1,16 +1,16 @@
 # SADActividades
 
-Independent migration of the SAD Activities tab, following the layered backend and standalone Angular conventions of SADInformes.
+Independent migration of the SAD Activities tab, following the layered backend and standalone Angular conventions of SADInformes. Repository-specific contribution rules are documented in `AGENTS.md`.
 
 ## Current status
 
-Scaffold only. The API exposes `/api/health`; unimplemented `/api/*` paths return 404. The SPA displays migration status, not activity data. No authentication, database connection, write commands or external notifications are enabled yet. This is not ready for production.
+Authentication foundation only. The API exposes public health and validated public Keycloak configuration, plus a protected `/api/auth/me`; all activity API paths remain unimplemented 404. The SPA initializes Keycloak as a PKCE public client and clearly reports unavailable authentication. No database connection, activity read/write command or external notification is enabled yet. This is not ready for production.
 
 Room capacity (aforos) and Crystal reports are excluded. Room availability and assignment remain planned.
 
 ## Development
 
-Prerequisites: .NET SDK 10.0.404, compatible Node (26 tested), pnpm 12.16.1. No credentials are required for this scaffold.
+Prerequisites: .NET SDK 10.0.404, compatible Node (26 tested), pnpm 12.16.1. Configure `Keycloak:Url` (HTTPS), `Keycloak:Realm` and `Keycloak:ClientId` externally; do not store client secrets because the SPA is a public PKCE client. Without valid configuration, health remains available while authentication fails closed.
 
 ```sh
 dotnet build SADActividades.slnx
@@ -37,7 +37,7 @@ The frontend uses http://127.0.0.1:4201 and proxies `/api` to loopback port 5187
 - `src/Domain`: domain types (to be migrated).
 - `src/Application`: use cases/contracts; references Domain.
 - `src/Infrastructure`: persistence and integration adapters; references Application.
-- `src/Web/WebApi`: composition root; references Application and Infrastructure.
+- `src/Web/WebApi`: composition root, JWT validation and fail-closed permission policies; references Application and Infrastructure.
 - `src/Web/WebUI`: Angular 22 standalone application with lazy activity route.
 
 ## Publish the scaffold
@@ -55,4 +55,4 @@ The staging script validates the built SPA, then replaces the generated contents
 
 ## Migration plan
 
-The authoritative workspace plan is `../odd/tasks/sad-actividades-migration.md`. Delivery strategy: feature-branch-chain; no push or PR creation is implied. Next: Keycloak/action permissions, calendar reads, editing/recurrence, rooms and operations, audit/integrations, then parity acceptance.
+The authoritative workspace plan is `../odd/tasks/sad-actividades-migration.md`. Delivery strategy: feature-branch-chain; no push or PR creation is implied. See `docs/authentication.md` for trusted token scope and authorization rules, and `docs/permission-equivalences.md` for the twelve standardized legacy mappings. Keycloak assignment is not automatic. Next: protect future calendar and action endpoints with their specific standardized permissions, then continue editing/recurrence, rooms and operations, audit/integrations, and parity acceptance.

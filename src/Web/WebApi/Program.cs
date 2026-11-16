@@ -1,4 +1,13 @@
+using Microsoft.AspNetCore.Authorization;
+using WebApi.Authentication;
+using WebApi.Authorization;
+using WebApi.Endpoints.Auth;
+using WebApi.Endpoints.Config;
+
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddKeycloakAuthentication(builder.Configuration);
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+
 var app = builder.Build();
 
 app.Use(async (context, next) =>
@@ -18,8 +27,15 @@ app.Use(async (context, next) =>
 });
 app.UseDefaultFiles();
 app.UseStaticFiles();
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapGet("/api/health", () => Results.Ok(new { application = "SADActividades", status = "ok" }));
-// Unimplemented API routes must not fall through to the SPA or expose legacy data.
+app.MapPublicKeycloakConfiguration();
+app.MapSessionEndpoints();
+// Las rutas de API no implementadas no deben llegar a la SPA ni exponer datos legados.
 app.Map("/api/{**path}", () => Results.NotFound());
 app.MapFallbackToFile("index.html");
 app.Run();
+
+public partial class Program;

@@ -1,15 +1,9 @@
-# SADActividades migration request
+# Solicitud de migración
 
-## User intent
+Requisitos de usuario que rigen esta unidad:
 
-> quiero que tomes como base de ejemplo SADInformes y cree un nuevo proyecto SADActividades, este sera la migración de la pestaña Actividades de SAD genera un plan para migrar su funcionalidad,
+- S3, idioma de commits: "los commit hacelos en español".
+- S4, estandarización de permisos: "los permisos deben seguir el formato de /Permisos/Estandarización-Permisos.md y al hacer el cambio guarda la equivualencia en Equiuvalencias-Permisos.md".
+- S5, comentarios e instrucciones del repositorio: "los comentarios en el codigo deben estar en español tambien verifica el AGENTS.md de SADInformes y agregalo al AGENTS.md de SADActividades".
 
-## Approved scope correction
-
-> lo de aforos y cristal dejalo afuera por mientras, comienza con el plan
-
-## Current work-unit boundary
-
-This candidate contains only the first independent project scaffold, build setup, placeholder Angular route and functional checks. It does not implement activity data access, authentication, writes or integrations. Room capacity management and Crystal reports are excluded. Room availability and assignment remain planned for later units.
-
-SADInformes is an architectural reference only and its existing edits must remain untouched. The workspace task document is `../../odd/tasks/sad-actividades-migration.md` relative to this file's directory. Delivery strategy selected by the user: feature-branch-chain; no push, PR or production deployment authorized.
+El agente de implementación no crea commits. Los futuros mensajes de commit corresponden al controlador padre y deben redactarse en español. La ruta solicitada se resolvió a los archivos existentes `Permisos/Estandarizacion-Permisos.md` y `Permisos/Equivalencias-Permisos.md`; este repositorio mantiene el catálogo verificable de Actividades en `docs/permission-equivalences.md` para que el controlador padre lo incorpore al archivo central sin modificar las equivalencias de otras aplicaciones.

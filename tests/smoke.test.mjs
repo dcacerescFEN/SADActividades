@@ -5,7 +5,7 @@ import { createServer } from 'node:net';
 import { test } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 
-// Loopback only; no SAD database, authentication server or notifications are used.
+// Solo se utiliza loopback; no se accede a la base SAD, al servidor de autenticación ni a notificaciones.
 test('standalone API identifies itself and exposes no unfinished activity API', { timeout: 30000 }, async () => {
   const listener = createServer();
   listener.listen(0, '127.0.0.1');

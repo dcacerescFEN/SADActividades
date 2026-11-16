@@ -1,0 +1,154 @@
+import { Injectable, InjectionToken, inject, signal } from '@angular/core';
+import Keycloak from 'keycloak-js';
+
+export const AUTH_STATUS = {
+  INITIALIZING: 'initializing',
+  READY: 'ready',
+  UNAVAILABLE: 'unavailable',
+} as const;
+
+export type AuthStatus = (typeof AUTH_STATUS)[keyof typeof AUTH_STATUS];
+
+export interface PublicKeycloakConfig {
+  url: string;
+  realm: string;
+  clientId: string;
+}
+
+export const KEYCLOAK_FACTORY = new InjectionToken<(config: PublicKeycloakConfig) => Keycloak>(
+  'KEYCLOAK_FACTORY', { providedIn: 'root', factory: () => (config) => new Keycloak(config) },
+);
+
+function isConfiguration(value: unknown): value is PublicKeycloakConfig {
+  if (typeof value !== 'object' || value === null) return false;
+  const url = Reflect.get(value, 'url');
+  const realm = Reflect.get(value, 'realm');
+  const clientId = Reflect.get(value, 'clientId');
+  if (typeof url !== 'string' || typeof realm !== 'string' || typeof clientId !== 'string'
+    || !realm.trim() || !clientId.trim()) return false;
+  try {
+    return new URL(url).protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+async function within<T>(
+  promise: Promise<T>, milliseconds: number, cancel?: () => void,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      cancel?.();
+      reject(new Error('timeout'));
+    }, milliseconds);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
+async function loadPublicConfiguration(): Promise<{ response: Response; configuration: unknown }> {
+  const controller = new AbortController();
+  const operation = (async () => {
+    const response = await fetch('/api/config/keycloak', { signal: controller.signal });
+    const configuration: unknown = await response.json();
+    return { response, configuration };
+  })();
+  return within(operation, 10_000, () => controller.abort());
+}
+
+@Injectable({ providedIn: 'root' })
+export class AuthService {
+  private readonly createKeycloak = inject(KEYCLOAK_FACTORY);
+  private keycloak?: Keycloak;
+  private readonly authStatus = signal<AuthStatus>(AUTH_STATUS.INITIALIZING);
+  private readonly authError = signal('');
+  private readonly authenticated = signal(false);
+  private readonly user = signal('');
+
+  readonly status = this.authStatus.asReadonly();
+  readonly error = this.authError.asReadonly();
+  readonly isAuthenticated = this.authenticated.asReadonly();
+  readonly username = this.user.asReadonly();
+
+  async initialize(): Promise<void> {
+    this.authStatus.set(AUTH_STATUS.INITIALIZING);
+    this.authError.set('');
+    try {
+      const { response, configuration } = await loadPublicConfiguration();
+      if (!response.ok || !isConfiguration(configuration)) {
+        this.setUnavailable('La autenticación no está disponible.');
+        return;
+      }
+
+      const keycloak = this.createKeycloak(configuration);
+      this.keycloak = keycloak;
+      keycloak.onAuthLogout = () => this.syncSession();
+      keycloak.onTokenExpired = () => { void this.getValidToken().catch(() => undefined); };
+      await within(keycloak.init({
+        onLoad: 'check-sso', pkceMethod: 'S256', responseMode: 'query', checkLoginIframe: false,
+      }), 10_000);
+      this.syncSession();
+      this.authStatus.set(AUTH_STATUS.READY);
+    } catch {
+      this.setUnavailable('No fue posible iniciar la autenticación.');
+    }
+  }
+
+  async login(returnUrl = '/'): Promise<void> {
+    if (this.status() !== AUTH_STATUS.READY) return;
+    const redirect = new URL(returnUrl, window.location.origin);
+    if (redirect.origin !== window.location.origin)
+      throw new Error('El destino de acceso debe pertenecer a esta aplicación.');
+    await this.requireKeycloak().login({ redirectUri: redirect.href });
+  }
+
+  async logout(): Promise<void> {
+    await this.requireKeycloak().logout({ redirectUri: window.location.origin + '/' });
+    this.clearSession();
+  }
+
+  async getValidToken(): Promise<string | undefined> {
+    if (this.status() !== AUTH_STATUS.READY) return undefined;
+    const keycloak = this.requireKeycloak();
+    if (!keycloak.authenticated) {
+      this.syncSession();
+      return undefined;
+    }
+    try {
+      await keycloak.updateToken(30);
+      this.syncSession();
+      return keycloak.token;
+    } catch {
+      keycloak.clearToken();
+      this.clearSession();
+      throw new Error('La sesión ha expirado. Inicia sesión nuevamente.');
+    }
+  }
+
+  private requireKeycloak(): Keycloak {
+    if (!this.keycloak) throw new Error('Keycloak no está inicializado.');
+    return this.keycloak;
+  }
+
+  private syncSession(): void {
+    const authenticated = this.keycloak?.authenticated === true;
+    this.authenticated.set(authenticated);
+    const username: unknown = this.keycloak?.tokenParsed?.['preferred_username'];
+    this.user.set(authenticated && typeof username === 'string' ? username : '');
+  }
+
+  private clearSession(): void {
+    this.authenticated.set(false);
+    this.user.set('');
+  }
+
+  private setUnavailable(message: string): void {
+    this.clearSession();
+    this.authStatus.set(AUTH_STATUS.UNAVAILABLE);
+    this.authError.set(message);
+  }
+}
