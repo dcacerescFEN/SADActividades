@@ -74,9 +74,20 @@ export class ActivitiesHome {
   protected readonly loaded = signal(false);
   protected readonly error = signal('');
   private requestVersion = 0;
+  private detailVersion = 0;
 
   constructor() {
-    this.form.valueChanges.subscribe(() => { this.requestVersion++; this.rows.set([]); this.detail.set(null); this.loaded.set(false); this.error.set(''); });
+    // Cambiar los filtros invalida filas, detalle y cualquier respuesta en curso.
+    this.form.valueChanges.subscribe(() => {
+      this.requestVersion++;
+      this.detailVersion++;
+      this.rows.set([]);
+      this.detail.set(null);
+      this.loaded.set(false);
+      this.error.set('');
+    });
+    // Las ubicaciones dependen del sector elegido, igual que en el calendario legado.
+    this.form.controls.sector.valueChanges.subscribe(() => void this.loadCatalogs());
     void this.loadCatalogs();
   }
 
@@ -102,7 +113,15 @@ export class ActivitiesHome {
   }
 
   protected async loadDetail(id: number): Promise<void> {
-    try { this.detail.set((await firstValueFrom(this.http.get<ApiResponse<ActivityDetail>>(`/api/activities/${id}`))).data); }
-    catch { this.error.set('No fue posible cargar el detalle de la actividad.'); }
+    const version = ++this.detailVersion;
+    try {
+      const result = await firstValueFrom(this.http.get<ApiResponse<ActivityDetail>>(`/api/activities/${id}`));
+      // Un detalle que llega tarde no reabre el panel sobre filtros ya cambiados.
+      if (version !== this.detailVersion) return;
+      this.detail.set(result.data);
+    } catch {
+      if (version !== this.detailVersion) return;
+      this.error.set('No fue posible cargar el detalle de la actividad.');
+    }
   }
 }

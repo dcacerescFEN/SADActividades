@@ -9,5 +9,6 @@ public sealed class ActivitySectorReader(SadContext context) : IActivitySectorRe
 {
     public async Task<IReadOnlyList<CatalogOptionDTO>> GetActiveAsync(CancellationToken cancellationToken) =>
         await context.Sectors.AsNoTracking().Where(item => item.Estado).OrderBy(item => item.NombreSector)
-            .Select(item => new CatalogOptionDTO(item.CodSector, item.NombreSector)).ToListAsync(cancellationToken);
+            // El sistema legado usa el nombre del sector como valor y el código como texto visible.
+            .Select(item => new CatalogOptionDTO(item.NombreSector, item.CodSector)).ToListAsync(cancellationToken);
 }

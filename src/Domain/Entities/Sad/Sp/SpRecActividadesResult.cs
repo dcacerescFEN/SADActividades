@@ -7,8 +7,8 @@ public sealed class SpRecActividadesResult
     public string Tipo { get; set; } = string.Empty;
     public string Titulo { get; set; } = string.Empty;
     public string Descripcion { get; set; } = string.Empty;
-    public string CodCatedra { get; set; } = string.Empty;
-    public string CodSeccion { get; set; } = string.Empty;
+    public string Cod_Catedra { get; set; } = string.Empty;
+    public string Cod_Seccion { get; set; } = string.Empty;
     public string? Dia { get; set; }
     public string? Inicio { get; set; }
     public string? Termino { get; set; }

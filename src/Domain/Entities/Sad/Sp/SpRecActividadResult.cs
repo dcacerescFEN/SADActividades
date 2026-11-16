@@ -6,9 +6,9 @@ public sealed class SpRecActividadResult
     public int Folio { get; set; }
     public string Titulo { get; set; } = string.Empty;
     public string Descripcion { get; set; } = string.Empty;
-    public string CodCatedra { get; set; } = string.Empty;
-    public string CodSeccion { get; set; } = string.Empty;
-    public string CodModulo { get; set; } = string.Empty;
+    public string Cod_Catedra { get; set; } = string.Empty;
+    public string Cod_Seccion { get; set; } = string.Empty;
+    public string Cod_Modulo { get; set; } = string.Empty;
     public string Periodo { get; set; } = string.Empty;
     public string Tipo { get; set; } = string.Empty;
     public string? Fecha { get; set; }

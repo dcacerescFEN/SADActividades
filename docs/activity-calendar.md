@@ -39,9 +39,11 @@ La consulta diaria conserva la invocación legada de `spRec_Actividades` (`SAD/A
 | `@SoloFEN` | `-100` |
 | `@SoloPublicas` | `-100` |
 | `@Ubicacion` | Ubicación seleccionada |
-| `@Sector` | Sector seleccionado |
+| `@Sector` | Sector seleccionado; el valor enviado es el nombre del sector, como en el calendario legado |
 
 Consultar días pasados es válido: la restricción de fechas pasadas del sistema legado aplica a la creación de actividades, no a la consulta.
+
+Los filtros conservan la representación legada: el sector viaja como **nombre** del sector (`DataValueField="NombreSector"` en `SAD/Actividades/default.aspx:154`) y la ubicación como código. Cambiar el sector recarga las ubicaciones disponibles para ese sector.
 
 ## Adaptadores de datos
 
@@ -81,5 +83,6 @@ Las pruebas automatizadas usan un adaptador simulado y un servidor de identidad 
 ## Pendiente
 
 - Contraste con datos reales de SAD en una muestra aprobada.
+- Búsqueda en pantalla y ordenamiento por columna del calendario legado, aún no migrados.
 - Creación, edición, recurrencia, suspensión, eliminación y asignación de salas.
 - Auditoría e integraciones de correo y reservas.

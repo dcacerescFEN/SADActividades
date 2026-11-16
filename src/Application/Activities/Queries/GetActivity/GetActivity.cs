@@ -14,7 +14,7 @@ public sealed class GetActivityHandler(ISadContextProcedures procedures, IApiRes
     {
         var row = (await procedures.SpRecActividadAsync(request.Id, cancellationToken: cancellationToken))?.FirstOrDefault();
         var detail = row is null ? null : new ActivityDetailDTO(row.Folio, row.Titulo, row.Descripcion,
-            row.CodCatedra, row.CodSeccion, row.CodModulo, row.Periodo, row.Tipo, row.Fecha, row.Inicio,
+            row.Cod_Catedra, row.Cod_Seccion, row.Cod_Modulo, row.Periodo, row.Tipo, row.Fecha, row.Inicio,
             row.Termino, row.Salas ?? row.Ubicacion, row.Publicar != 0);
         return responses.Success(detail);
     }

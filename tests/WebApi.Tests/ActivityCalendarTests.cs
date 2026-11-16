@@ -13,7 +13,7 @@ public sealed class ActivityCalendarTests
     {
         using var factory = new ActivityTestFactory();
         factory.Procedures.Activities.Add(new SpRecActividadesResult { Folio = 7, Titulo = "Clase", Tipo = "EXAMEN",
-            Categoria = "DOCENCIA", Descripcion = "", CodCatedra = "", CodSeccion = "", Profesor = null,
+            Categoria = "DOCENCIA", Descripcion = "", Cod_Catedra = "", Cod_Seccion = "", Profesor = null,
             Dia = "01/05/2020", Inicio = "09:00", Termino = "10:00", Publicar = 1, Suspendida = null });
         using var client = factory.CreateAuthorizedClient(Permission.AccessModule, Permission.ViewCalendar);
 
@@ -74,7 +74,7 @@ public sealed class ActivityCalendarTests
     {
         using var factory = new ActivityTestFactory();
         factory.Procedures.Details.Add(new SpRecActividadResult { Folio = 9, Titulo = "Seminario", Descripcion = "Detalle",
-            Tipo = "SEMINARIO", CodCatedra = "", CodSeccion = "", CodModulo = "", Periodo = "", Salas = null });
+            Tipo = "SEMINARIO", Cod_Catedra = "", Cod_Seccion = "", Cod_Modulo = "", Periodo = "", Salas = null });
         factory.Procedures.Types.Add(new SpRecActividadesTiposResult { Tipo = "SEMINARIO" });
         factory.Procedures.Locations.Add(new SpRecActividadesSalasResult { Codigo = "A1", Nombre = null, Sector = "CENTRAL" });
         using var client = factory.CreateAuthorizedClient(Permission.AccessModule, Permission.ViewCalendar);
