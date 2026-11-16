@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+**/.angular/
+src/Web/WebApi/wwwroot/
+.vs/
+.artifacts/
+*.user
+.env
+.env.*
+!.env.example

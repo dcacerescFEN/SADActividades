@@ -1,0 +1,8 @@
+packages:
+  - '.'
+allowBuilds:
+  '@parcel/watcher@2.6.0': true
+  'esbuild@0.27.7': true
+  'esbuild@0.28.1': true
+  'lmdb@3.5.4': true
+  'msgpackr-extract@3.0.7': true
