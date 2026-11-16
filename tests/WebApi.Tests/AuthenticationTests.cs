@@ -180,16 +180,17 @@ public sealed class AuthenticationTests : IDisposable
 
         Assert.Equal(HttpStatusCode.Unauthorized,
             (await client.GetAsync(Probe(Permission.EditTeachingActivity))).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/activities")).StatusCode);
+        // La consulta existe y falla cerrada sin identidad; la escritura sigue sin implementarse.
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/activities?date=2026-01-05&category=0")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsync("/api/activities", null)).StatusCode);
     }
 
     [Fact]
-    public void Catalog_and_documentation_cover_exactly_twelve_standardized_described_mappings()
+    public void Catalog_and_documentation_cover_every_standardized_described_mapping()
     {
         var mappings = ReadDocumentedMappings();
-        Assert.Equal(12, Permission.Definitions.Count);
-        Assert.Equal(12, mappings.Count);
+        Assert.Equal(14, Permission.Definitions.Count);
+        Assert.Equal(Permission.Definitions.Count, mappings.Count);
         Assert.Equal(Permission.Definitions.Select(item => item.Identifier).Order(),
             mappings.Select(item => item.NewIdentifier).Order());
         Assert.All(Permission.Definitions, definition =>
@@ -207,13 +208,20 @@ public sealed class AuthenticationTests : IDisposable
             Assert.Contains(definition.Identifier, documentation);
             Assert.Contains(definition.Description, documentation);
         });
-        Assert.Equal(12, Permission.Definitions.Select(item => item.Identifier).Distinct().Count());
-        Assert.Equal(12, mappings.Select(item => item.OldIdentifier).Distinct(StringComparer.Ordinal).Count());
-        Assert.All(mappings, mapping =>
-        {
-            Assert.False(string.IsNullOrWhiteSpace(mapping.Description));
-            Assert.Matches("^SAD/Actividades/default\\.aspx\\.vb:(52|53|54|55|56|57|60|61|62|63|110|111)$", mapping.Source);
-        });
+        Assert.Equal(14, Permission.Definitions.Select(item => item.Identifier).Distinct().Count());
+        Assert.All(mappings, mapping => Assert.False(string.IsNullOrWhiteSpace(mapping.Description)));
+        // Los doce permisos de acción heredados conservan su evidencia exacta en el calendario legado.
+        var legacyActions = mappings
+            .Where(mapping => mapping.Source.Contains("Actividades/default.aspx.vb:", StringComparison.Ordinal))
+            .ToArray();
+        Assert.Equal(12, legacyActions.Length);
+        Assert.Equal(12, legacyActions.Select(mapping => mapping.OldIdentifier).Distinct(StringComparer.Ordinal).Count());
+        Assert.All(legacyActions, mapping =>
+            Assert.Matches("^SAD/Actividades/default\\.aspx\\.vb:(52|53|54|55|56|57|60|61|62|63|110|111)$", mapping.Source));
+        // El acceso al módulo proviene de la viñeta del encabezado; la consulta es una definición nueva.
+        Assert.Contains(mappings, mapping => mapping.NewIdentifier == Permission.AccessModule
+            && mapping.Source == "SAD/comunes/Header.ascx.vb:99");
+        Assert.Contains(mappings, mapping => mapping.NewIdentifier == Permission.ViewCalendar);
         Assert.Equal(new[] { Role.ActivityAdmin, Role.ActivitySuperAdmin },
             Role.Definitions.Select(item => item.Identifier).ToArray());
         Assert.All(Role.Definitions, role => Assert.False(string.IsNullOrWhiteSpace(role.Description)));

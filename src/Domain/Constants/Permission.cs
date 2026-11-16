@@ -3,6 +3,8 @@ namespace Domain.Constants;
 /// <summary>Permisos estandarizados del módulo de Actividades.</summary>
 public static class Permission
 {
+    public const string AccessModule = "PERMISSION_ACTIVITY_ACCESS_MODULE";
+    public const string ViewCalendar = "PERMISSION_ACTIVITY_VIEW_CALENDAR";
     public const string CreateTeachingActivity = "PERMISSION_ACTIVITY_CREATE_TEACHING_ACTIVITY";
     public const string CreateNonTeachingActivity = "PERMISSION_ACTIVITY_CREATE_NON_TEACHING_ACTIVITY";
     public const string EditTeachingActivitySuspensionState = "PERMISSION_ACTIVITY_EDIT_TEACHING_ACTIVITY_SUSPENSION_STATE";
@@ -18,6 +20,8 @@ public static class Permission
 
     public static IReadOnlyList<PermissionDefinition> Definitions { get; } =
     [
+        new(AccessModule, "Permite acceder al módulo de Actividades."),
+        new(ViewCalendar, "Permite consultar el calendario, detalle y catálogos de Actividades."),
         new(CreateTeachingActivity, "Permite crear actividades docentes."),
         new(CreateNonTeachingActivity, "Permite crear actividades no docentes."),
         new(EditTeachingActivitySuspensionState, "Permite editar el estado de suspensión o reactivación de actividades docentes."),

@@ -18,6 +18,8 @@ Este catálogo aplica el estándar `Permisos/Estandarizacion-Permisos.md`. Los i
 | `Asignar Salas Espacios pregrado` | `PERMISSION_ACTIVITY_EDIT_UNDERGRADUATE_SPACE_ROOM_ASSIGNMENT` | Permite editar la asignación de salas del servicio de espacios de pregrado. | `SAD/Actividades/default.aspx.vb:63` |
 | `agregar actividades docentes` | `PERMISSION_ACTIVITY_CREATE_TEACHING_ACTIVITY` | Permite crear actividades docentes. | `SAD/Actividades/default.aspx.vb:110` |
 | `agregar actividades no docentes` | `PERMISSION_ACTIVITY_CREATE_NON_TEACHING_ACTIVITY` | Permite crear actividades no docentes. | `SAD/Actividades/default.aspx.vb:111` |
+| `Viñeta Actividades` | `PERMISSION_ACTIVITY_ACCESS_MODULE` | Permite acceder al módulo de Actividades. | `SAD/comunes/Header.ascx.vb:99` |
+| `Sin permiso de consulta en SAD (definición nueva)` | `PERMISSION_ACTIVITY_VIEW_CALENDAR` | Permite consultar el calendario, detalle y catálogos de Actividades. | `Nueva definición de la migración` |
 
 ## Roles administrativos del módulo
 

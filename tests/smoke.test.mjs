@@ -43,12 +43,13 @@ test('standalone API identifies itself and exposes no unfinished activity API', 
     assert.ok(response, `API did not become ready:\n${output}`);
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { application: 'SADActividades', status: 'ok' });
-    const activities = await fetch(`${baseUrl}/api/activities`);
-    assert.equal(activities.status, 404);
-    assert.equal(await activities.text(), '');
+    // La consulta ya existe y falla cerrada sin identidad ni configuración de autenticación.
+    const activities = await fetch(`${baseUrl}/api/activities?date=2026-01-05&category=0&sector=TODOS&location=TODAS`);
+    assert.ok([401, 503].includes(activities.status), `unexpected status ${activities.status}`);
     const encodedActivities = await fetch(`${baseUrl}/api%2Factivities`);
     assert.equal(encodedActivities.status, 404);
     assert.equal(await encodedActivities.text(), '');
+    // La escritura sigue sin implementarse.
     const rejected = await fetch(`${baseUrl}/api/activities`, { method: 'POST' });
     assert.equal(rejected.status, 404);
     assert.equal(await rejected.text(), '');

@@ -1,12 +1,17 @@
+using Application;
+using Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using WebApi.Authentication;
 using WebApi.Authorization;
 using WebApi.Endpoints.Auth;
 using WebApi.Endpoints.Config;
+using WebApi.Endpoints.Activities;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddKeycloakAuthentication(builder.Configuration);
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+builder.Services.AddApplicationServices();
+builder.Services.AddInfrastructureServices(builder.Configuration);
 
 var app = builder.Build();
 
@@ -33,6 +38,7 @@ app.UseAuthorization();
 app.MapGet("/api/health", () => Results.Ok(new { application = "SADActividades", status = "ok" }));
 app.MapPublicKeycloakConfiguration();
 app.MapSessionEndpoints();
+app.MapActivityEndpoints();
 // Las rutas de API no implementadas no deben llegar a la SPA ni exponer datos legados.
 app.Map("/api/{**path}", () => Results.NotFound());
 app.MapFallbackToFile("index.html");

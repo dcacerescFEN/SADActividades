@@ -4,13 +4,15 @@ Independent migration of the SAD Activities tab, following the layered backend a
 
 ## Current status
 
-Authentication foundation only. The API exposes public health and validated public Keycloak configuration, plus a protected `/api/auth/me`; all activity API paths remain unimplemented 404. The SPA initializes Keycloak as a PKCE public client and clearly reports unavailable authentication. No database connection, activity read/write command or external notification is enabled yet. This is not ready for production.
+Calendar read only. The API exposes public health and validated public Keycloak configuration, a protected `/api/auth/me`, and protected read endpoints for the daily activity calendar, one activity detail and its filter catalogs. No activity write command, room assignment or external notification is enabled yet. This is not ready for production.
+
+See `docs/activity-calendar.md` for endpoints, legacy filter semantics and pending parity checks. The activity reads require `PERMISSION_ACTIVITY_ACCESS_MODULE` and `PERMISSION_ACTIVITY_VIEW_CALENDAR`.
 
 Room capacity (aforos) and Crystal reports are excluded. Room availability and assignment remain planned.
 
 ## Development
 
-Prerequisites: .NET SDK 10.0.404, compatible Node (26 tested), pnpm 12.16.1. Configure `Keycloak:Url` (HTTPS), `Keycloak:Realm` and `Keycloak:ClientId` externally; do not store client secrets because the SPA is a public PKCE client. Without valid configuration, health remains available while authentication fails closed.
+Prerequisites: .NET SDK 10.0.404, compatible Node (26 tested), pnpm 12.16.1. Configure `Keycloak:Url` (HTTPS), `Keycloak:Realm` and `Keycloak:ClientId` externally; do not store client secrets because the SPA is a public PKCE client. Activity reads use the externally supplied `ConnectionStrings:Sad`. Without valid configuration, health remains available while authentication and data access fail closed with sanitized responses.
 
 ```sh
 dotnet build SADActividades.slnx
