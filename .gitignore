@@ -3,6 +3,7 @@
 **/node_modules/
 **/dist/
 **/.angular/
+**/.certs/
 src/Web/WebApi/wwwroot/
 .vs/
 .artifacts/
