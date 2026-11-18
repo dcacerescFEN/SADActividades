@@ -6,6 +6,32 @@
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <!--
+    Aplica la preferencia de tema guardada antes de que arranque Angular para
+    evitar el destello blanco. Debe coincidir con ThemeStore y no usa código
+    externo: la preferencia es opcional y cualquier fallo deja el tema del sistema.
+  -->
+  <script>
+    (function () {
+      var preference = 'auto';
+      try {
+        var stored = localStorage.getItem('sadactividades-theme-preference');
+        preference = stored === 'light' || stored === 'dark' ? stored : 'auto';
+      } catch {
+        preference = 'auto';
+      }
+      var theme = preference;
+      if (theme === 'auto') {
+        var prefersDark = typeof window.matchMedia === 'function'
+          && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        theme = prefersDark ? 'dark' : 'light';
+      }
+      var root = document.documentElement;
+      root.setAttribute('data-bs-theme', theme);
+      root.setAttribute('data-theme', theme);
+      root.style.colorScheme = theme;
+    })();
+  </script>
 </head>
 <body><app-root></app-root></body>
 </html>
