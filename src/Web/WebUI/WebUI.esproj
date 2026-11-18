@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.VisualStudio.JavaScript.Sdk/0.5.127-alpha">
+  <!-- Proyecto de integración del SPA: permite que dotnet build/publish y las herramientas
+       de Visual Studio invoquen pnpm sin que el SDK de JavaScript instale ni compile por su cuenta. -->
+  <PropertyGroup>
+    <StartupCommand>pnpm start</StartupCommand>
+    <BuildCommand>pnpm build</BuildCommand>
+    <JavaScriptTestFramework>Vitest</JavaScriptTestFramework>
+    <ShouldRunNpmInstall>false</ShouldRunNpmInstall>
+    <ShouldRunBuildScript>false</ShouldRunBuildScript>
+    <PublishAssetsDirectory>$(MSBuildProjectDirectory)/dist/webui/browser</PublishAssetsDirectory>
+  </PropertyGroup>
+</Project>
