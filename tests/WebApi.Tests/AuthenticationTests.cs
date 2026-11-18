@@ -28,7 +28,14 @@ public sealed class AuthenticationTests : IDisposable
     [Fact]
     public async Task Missing_configuration_keeps_health_public_and_fails_authentication_closed()
     {
-        using var factory = CreateFactory();
+        // Se anula explícitamente la configuración publicada para probar el comportamiento sin identidad.
+        using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment("Testing");
+            builder.UseSetting("Keycloak:Url", string.Empty);
+            builder.UseSetting("Keycloak:Realm", string.Empty);
+            builder.UseSetting("Keycloak:ClientId", string.Empty);
+        });
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/health")).StatusCode);
