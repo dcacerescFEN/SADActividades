@@ -12,7 +12,7 @@ Room capacity (aforos) and Crystal reports are excluded. Room availability and a
 
 ## Development
 
-Prerequisites: .NET SDK 10.0.404, compatible Node (26 tested), pnpm 12.16.1. Configure `Keycloak:Url` (HTTPS), `Keycloak:Realm` and `Keycloak:ClientId` externally; do not store client secrets because the SPA is a public PKCE client. Activity reads use the externally supplied `ConnectionStrings:Sad`. Without valid configuration, health remains available while authentication and data access fail closed with sanitized responses.
+Prerequisites: .NET SDK 10.0.404, compatible Node (26 tested), pnpm 12.16.1. Configure `Keycloak:Url` (HTTPS), `Keycloak:Realm` and `Keycloak:ClientId` externally; do not store client secrets because the SPA is a public PKCE client. Activity reads use `ConnectionStrings:Sad`, which points to the same `Sad` database as SADInformes. Store it outside the repository, for local development with `dotnet user-secrets set "ConnectionStrings:Sad" "<connection string>"` from `src/Web/WebApi`, and through environment configuration (for example `ConnectionStrings__Sad`) in deployments. Without valid configuration, health remains available while authentication and data access fail closed with sanitized responses.
 
 ### Sitio completo con `dotnet run`
 

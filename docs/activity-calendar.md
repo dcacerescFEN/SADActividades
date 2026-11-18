@@ -53,9 +53,18 @@ Los filtros conservan la representación legada: el sector viaja como **nombre**
 
 ## Configuración
 
-La conexión de lectura se toma de `ConnectionStrings:Sad`. El valor real no se versiona: debe provenir de la configuración del entorno o del gestor de secretos del despliegue.
+La conexión de lectura se toma de `ConnectionStrings:Sad` y apunta a la misma base `Sad` que usa SADInformes.
 
-Sin una conexión utilizable la aplicación inicia igualmente, pero las consultas fallan cerradas con `503`.
+El valor real no se versiona. En desarrollo local se guarda con secretos de usuario, fuera del repositorio:
+
+```sh
+cd src/Web/WebApi
+dotnet user-secrets set "ConnectionStrings:Sad" "<cadena de conexión>"
+```
+
+En despliegues se entrega por configuración del entorno, por ejemplo `ConnectionStrings__Sad`. Nunca se escribe en `appsettings.json`.
+
+Sin una conexión utilizable la aplicación inicia igualmente, pero las consultas fallan cerradas con `503` sanitizado.
 
 ## Permisos
 

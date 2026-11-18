@@ -54,4 +54,5 @@ dotnet run --project src/Web/WebApi
 ## Pendiente
 
 - Crear los clientes y roles en el realm; requiere administración de Keycloak.
-- Cargar la cadena de conexión `ConnectionStrings:Sad` mediante configuración externa o gestor de secretos. No se versiona.
+
+La cadena de conexión `ConnectionStrings:Sad` ya está configurada en este equipo mediante secretos de usuario y apunta a la misma base que SADInformes; en otros equipos o despliegues debe entregarse por configuración externa. No se versiona.
