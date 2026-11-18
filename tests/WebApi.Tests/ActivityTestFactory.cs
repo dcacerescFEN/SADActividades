@@ -61,11 +61,19 @@ public sealed class ActivityTestFactory : WebApplicationFactory<Program>
             var client = Request.Headers["X-Test-Client"].FirstOrDefault() ?? "SADActividades";
             var access = JsonSerializer.Serialize(new Dictionary<string, object>
             {
-                [client] = new { roles = roles.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries) },
+                [client] = new { roles = roles.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(ToKeycloakRole).ToArray() },
             });
             var identity = new ClaimsIdentity([new Claim("resource_access", access, JsonClaimValueTypes.Json)], "Test");
             return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), "Test")));
         }
+
+        /// <summary>
+        /// Emula a Keycloak: los permisos se publican como PERMISSION_ + nombre corto y los roles
+        /// administrativos del módulo se conservan exactamente como se indican.
+        /// </summary>
+        private static string ToKeycloakRole(string role) =>
+            role.StartsWith("ROLE_", StringComparison.Ordinal) ? role : "PERMISSION_" + role;
     }
 }
 

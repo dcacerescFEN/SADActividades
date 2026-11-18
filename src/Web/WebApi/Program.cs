@@ -1,30 +1,36 @@
 using Application;
 using Infrastructure;
 using Microsoft.AspNetCore.Authorization;
+using Scalar.AspNetCore;
+using WebApi;
 using WebApi.Authentication;
-using WebApi.Authorization;
-using WebApi.Endpoints.Auth;
-using WebApi.Endpoints.Config;
 using WebApi.Endpoints.Activities;
+using WebApi.Endpoints.Config;
+using WebApi.Extension;
 using WebApi.OpenApi;
+using WebApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddKeycloakAuthentication(builder.Configuration);
-builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
-builder.Services.AddApiDocumentation();
+builder.Services.AddWebApiServices(builder.Configuration);
+builder.Services.AddEndpoints(typeof(Program).Assembly);
 
 var app = builder.Build();
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
+
+app.UseHttpsRedirection();
+
+// Las rutas de API con separadores codificados no deben llegar a la SPA.
 app.Use(async (context, next) =>
 {
     var decodedPath = Uri.UnescapeDataString(context.Request.Path.Value ?? string.Empty);
-    var isEncodedApiPath = !context.Request.Path.StartsWithSegments("/api")
+    if (!context.Request.Path.StartsWithSegments("/api")
         && (decodedPath.Equals("/api", StringComparison.OrdinalIgnoreCase)
-            || decodedPath.StartsWith("/api/", StringComparison.OrdinalIgnoreCase));
-
-    if (isEncodedApiPath)
+            || decodedPath.StartsWith("/api/", StringComparison.OrdinalIgnoreCase)))
     {
         context.Response.StatusCode = StatusCodes.Status404NotFound;
         return;
@@ -32,20 +38,20 @@ app.Use(async (context, next) =>
 
     await next();
 });
-app.UseDefaultFiles();
-app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/api/health", () => Results.Ok(new { application = "SADActividades", status = "ok" }));
-app.MapPublicKeycloakConfiguration();
-app.MapSessionEndpoints();
-app.MapActivityEndpoints();
-// Documentación interactiva (solo desarrollo) antes del fallback de la SPA.
-app.MapDevelopmentDocumentation();
-// Las rutas de API no implementadas no deben llegar a la SPA ni exponer datos legados.
+// APIs mínimas asignadas automáticamente
+app.MapEndpoints();
+
+// Una ruta de API desconocida responde 404 y nunca recibe la SPA.
 app.Map("/api/{**path}", () => Results.NotFound());
-app.MapFallbackToFile("index.html");
+
+app.MapDevelopmentDocumentation();
+
+app.MapFallbackToFile("/index.html");
+
 app.Run();
 
 public partial class Program;

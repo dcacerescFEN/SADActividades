@@ -1,25 +1,18 @@
 using WebApi.Authentication;
+using WebApi.Extension;
 
 namespace WebApi.Endpoints.Config;
 
-public static class PublicKeycloakConfigEndpoints
+public sealed class PublicKeycloakConfigEndpoints : IEndpoint
 {
-    public static IEndpointRouteBuilder MapPublicKeycloakConfiguration(this IEndpointRouteBuilder app)
+    public void MapEndpoint(IEndpointRouteBuilder app) =>
+        app.MapGet("/api/config/keycloak", GetKeycloakConfiguration)
+            .AllowAnonymous().WithTags("Config").WithSummary("Obtiene la configuración pública de Keycloak");
+
+    private static IResult GetKeycloakConfiguration(IConfiguration configuration) => Results.Ok(new
     {
-        app.MapGet("/api/config/keycloak", (KeycloakConfigurationState state) =>
-        {
-            var configuration = state.PublicConfiguration;
-            return configuration is null
-                ? Results.Problem(
-                    title: "La autenticación no está disponible.",
-                    statusCode: StatusCodes.Status503ServiceUnavailable)
-                : Results.Ok(new
-                {
-                    url = configuration.Url,
-                    realm = configuration.Realm,
-                    clientId = configuration.ClientId,
-                });
-        }).AllowAnonymous();
-        return app;
-    }
+        url = configuration["Keycloak:Url"]?.TrimEnd('/'),
+        realm = configuration["Keycloak:Realm"],
+        clientId = configuration["Keycloak:ClientId"],
+    });
 }

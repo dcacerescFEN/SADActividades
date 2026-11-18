@@ -141,27 +141,29 @@ describe('Keycloak authentication', () => {
     await auth.initialize();
 
     expect(auth.isAuthenticated()).toBe(false);
-    expect(auth.hasPermission('PERMISSION_ACTIVITY_VIEW_CALENDAR')).toBe(false);
+    expect(auth.hasPermission('ACTIVITY_VIEW_CALENDAR')).toBe(false);
   });
 
-  it('concede el permiso exacto otorgado al cliente configurado', async () => {
+  it('concede el permiso exacto con el nombre corto y rechaza el identificador completo', async () => {
     await authenticateWith(clientRoles(['PERMISSION_ACTIVITY_VIEW_CALENDAR']));
 
-    expect(auth.hasPermission('PERMISSION_ACTIVITY_VIEW_CALENDAR')).toBe(true);
-    expect(auth.hasPermission('PERMISSION_ACTIVITY_CREATE_TEACHING_ACTIVITY')).toBe(false);
+    expect(auth.hasPermission('ACTIVITY_VIEW_CALENDAR')).toBe(true);
+    expect(auth.hasPermission('ACTIVITY_CREATE_TEACHING_ACTIVITY')).toBe(false);
+    // El identificador completo es el rol de Keycloak, no el nombre que recibe hasPermission.
+    expect(auth.hasPermission('PERMISSION_ACTIVITY_VIEW_CALENDAR')).toBe(false);
   });
 
   it('concede los permisos del módulo a los roles administrativos', async () => {
     await authenticateWith(clientRoles(['ROLE_ACTIVITY_ADMIN']));
 
-    expect(auth.hasPermission('PERMISSION_ACTIVITY_VIEW_CALENDAR')).toBe(true);
-    expect(auth.hasPermission('PERMISSION_ACTIVITY_DELETE_NON_TEACHING_ACTIVITY')).toBe(true);
+    expect(auth.hasPermission('ACTIVITY_VIEW_CALENDAR')).toBe(true);
+    expect(auth.hasPermission('ACTIVITY_DELETE_NON_TEACHING_ACTIVITY')).toBe(true);
   });
 
   it('reconoce también al superadministrador del módulo', async () => {
     await authenticateWith(clientRoles(['ROLE_ACTIVITY_SUPERADMIN']));
 
-    expect(auth.hasPermission('PERMISSION_ACTIVITY_EDIT_ROOM_ASSIGNMENT')).toBe(true);
+    expect(auth.hasPermission('ACTIVITY_EDIT_ROOM_ASSIGNMENT')).toBe(true);
   });
 
   it('rechaza los roles de otros clientes y los roles de realm', async () => {
@@ -172,7 +174,7 @@ describe('Keycloak authentication', () => {
       realm_access: { roles: ['PERMISSION_ACTIVITY_VIEW_CALENDAR', 'ROLE_ACTIVITY_ADMIN'] },
     });
 
-    expect(auth.hasPermission('PERMISSION_ACTIVITY_VIEW_CALENDAR')).toBe(false);
+    expect(auth.hasPermission('ACTIVITY_VIEW_CALENDAR')).toBe(false);
   });
 
   it('rechaza los nombres legados y los permisos de otros módulos', async () => {
@@ -180,7 +182,8 @@ describe('Keycloak authentication', () => {
 
     expect(auth.hasPermission('Viñeta Actividades')).toBe(false);
     expect(auth.hasPermission('PERMISSION_REPORT_ACCESS_MODULE')).toBe(false);
-    expect(auth.hasPermission('PERMISSION_ACTIVITY_VIEW_CALENDAR')).toBe(false);
+    expect(auth.hasPermission('REPORT_ACCESS_MODULE')).toBe(false);
+    expect(auth.hasPermission('ACTIVITY_VIEW_CALENDAR')).toBe(false);
   });
 });
 

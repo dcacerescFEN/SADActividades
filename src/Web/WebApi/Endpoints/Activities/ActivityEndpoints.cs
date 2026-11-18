@@ -4,21 +4,23 @@ using Application.Activities.Queries.GetActivity;
 using Application.Activities.Queries.GetActivityCatalogs;
 using Application.Common.Interfaces;
 using Domain.Constants;
+using WebApi.Extension;
 
 namespace WebApi.Endpoints.Activities;
 
 /// <summary>Endpoints de solo lectura del calendario de Actividades.</summary>
-public static class ActivityEndpoints
+public sealed class ActivityEndpoints : IEndpoint
 {
-    public static IEndpointRouteBuilder MapActivityEndpoints(this IEndpointRouteBuilder endpoints)
+    public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        var group = endpoints.MapGroup("/api/activities")
-            .RequireAuthorization(Permission.AccessModule, Permission.ViewCalendar);
+        var group = app.MapGroup("/api/activities")
+            // Acceso al módulo y consulta son permisos independientes: ninguno implica al otro.
+            .RequireAuthorization(Permission.ACTIVITY_ACCESS, Permission.VIEW_CALENDAR)
+            .WithTags("Actividades/");
 
         group.MapGet("", GetActivities);
         group.MapGet("/catalogs", GetCatalogs);
         group.MapGet("/{id:int}", GetActivity);
-        return endpoints;
     }
 
     private static async Task<IResult> GetActivities(string? date, int category, string? sector, string? location,

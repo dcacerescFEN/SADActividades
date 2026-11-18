@@ -72,7 +72,8 @@ Estas reglas aplican cuando se implemente persistencia:
 ### Endpoints, permisos y errores
 
 - Declarar autorización explícitamente y asignar el permiso específico de cada acción.
-- Los permisos usan `PERMISSION_ACTIVITY_<ACCION_DESCRIPTIVA>`; solo `ROLE_ACTIVITY_ADMIN` y `ROLE_ACTIVITY_SUPERADMIN` conceden acceso completo al módulo.
+- En el código, la constante de cada permiso es su nombre corto (`ACTIVITY_VIEW_CALENDAR`); el rol de Keycloak es `PERMISSION_ACTIVITY_<ACCION_DESCRIPTIVA>` y solo se compone con `Permission.ToRoleIdentifier`, nunca concatenando el prefijo en otro archivo (salvo los datos de prueba que emulan a Keycloak). Las políticas de autorización se nombran con el nombre corto.
+- Solo `ROLE_ACTIVITY_ADMIN` y `ROLE_ACTIVITY_SUPERADMIN` conceden acceso completo al módulo.
 - Los nombres legados existen solo en el catálogo de equivalencias y no se aceptan como claims alternativos.
 - No inferir `ACCESS` como equivalente a `VIEW`, creación, edición, eliminación o asignación de salas.
 - Las reglas de roles no eliminan validaciones de negocio y no implementan suplantación.

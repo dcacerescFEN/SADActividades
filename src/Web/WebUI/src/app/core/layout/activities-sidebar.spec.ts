@@ -10,7 +10,7 @@ import { ActivitiesSidebar } from './activities-sidebar';
 class TestPage {}
 
 const FAVORITES_KEY = 'sadactividades.sidebar.favorite-routes';
-const CALENDAR_PERMISSION = 'PERMISSION_ACTIVITY_VIEW_CALENDAR';
+const CALENDAR_PERMISSION = 'ACTIVITY_VIEW_CALENDAR';
 
 describe('menú de Actividades', () => {
   let username: WritableSignal<string>;

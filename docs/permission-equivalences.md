@@ -2,6 +2,8 @@
 
 Este catálogo aplica el estándar `Permisos/Estandarizacion-Permisos.md`. Los identificadores legados se conservan únicamente como trazabilidad documental: **no se aceptan como claims alternativos ni como fallback de autorización**.
 
+En el código, la constante de cada permiso es su **nombre corto**, sin el prefijo `PERMISSION_` (`ACTIVITY_VIEW_CALENDAR`), y `Domain.Constants.Permission.ToRoleIdentifier` compone el rol de Keycloak anteponiéndolo. Los identificadores de la columna *Identificador estandarizado* son los roles de Keycloak y no cambian; ningún otro archivo debe concatenar el prefijo por su cuenta.
+
 ## Permisos
 
 | Identificador legado exacto | Identificador estandarizado | Propósito y alcance | Fuente |
@@ -32,4 +34,4 @@ Estos roles satisfacen las políticas del módulo ACTIVITY sin permisos individu
 
 ## Asignación
 
-Este catálogo no crea ni asigna automáticamente roles o permisos en Keycloak. La provisión corresponde a la administración de identidad y debe utilizar exactamente los identificadores estandarizados.
+Este catálogo no crea ni asigna automáticamente roles o permisos en Keycloak. La provisión corresponde a la administración de identidad y debe utilizar exactamente los identificadores estandarizados, es decir los roles `PERMISSION_ACTIVITY_*` documentados arriba.

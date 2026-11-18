@@ -26,9 +26,10 @@ public sealed class AuthenticationTests : IDisposable
     private readonly RSA _rsa = RSA.Create(2048);
 
     [Fact]
-    public async Task Missing_configuration_keeps_health_public_and_fails_authentication_closed()
+public void Missing_configuration_prevents_startup_instead_of_serving_a_half_configured_api()
     {
-        // Se anula explícitamente la configuración publicada para probar el comportamiento sin identidad.
+        // Sin identidad valida la aplicacion no arranca: se evita exponer endpoints que no
+        // podrian autenticar ni autorizar a nadie.
         using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Testing");
@@ -36,14 +37,8 @@ public sealed class AuthenticationTests : IDisposable
             builder.UseSetting("Keycloak:Realm", string.Empty);
             builder.UseSetting("Keycloak:ClientId", string.Empty);
         });
-        using var client = factory.CreateClient();
 
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/health")).StatusCode);
-        var configuration = await client.GetAsync("/api/config/keycloak");
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, configuration.StatusCode);
-        Assert.Equal("La autenticación no está disponible.",
-            JsonDocument.Parse(await configuration.Content.ReadAsStringAsync()).RootElement.GetProperty("title").GetString());
-        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/auth/me")).StatusCode);
+        Assert.ThrowsAny<InvalidOperationException>(() => factory.CreateClient());
     }
 
     [Theory]
@@ -60,18 +55,16 @@ public sealed class AuthenticationTests : IDisposable
     [InlineData(Url, "..", ClientId)]
     [InlineData(Url, "", ClientId)]
     [InlineData(Url, Realm, "")]
-    public async Task Invalid_public_configuration_returns_only_a_sanitized_503(string url, string realm, string clientId)
+    public void Invalid_public_configuration_prevents_startup_without_leaking_values(string url, string realm, string clientId)
     {
+        // La configuracion invalida detiene el arranque: no se sirve una aplicacion a medio
+        // configurar. El mensaje nunca repite los valores recibidos.
         using var factory = CreateFactory(url, realm, clientId);
-        using var client = factory.CreateClient();
 
-        var response = await client.GetAsync("/api/config/keycloak");
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-        var body = await response.Content.ReadAsStringAsync();
-        if (url.Length > 0) Assert.DoesNotContain(url, body);
-        if (realm.Length > 2) Assert.DoesNotContain(realm, body);
-        if (clientId.Length > 2) Assert.DoesNotContain(clientId, body);
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/health")).StatusCode);
+        var error = Assert.ThrowsAny<InvalidOperationException>(() => factory.CreateClient());
+        if (url.Length > 0) Assert.DoesNotContain(url, error.Message);
+        if (realm.Length > 2) Assert.DoesNotContain(realm, error.Message);
+        if (clientId.Length > 2) Assert.DoesNotContain(clientId, error.Message);
     }
 
     [Fact]
@@ -145,13 +138,17 @@ public sealed class AuthenticationTests : IDisposable
 
         foreach (var mapping in mappings)
         {
+            // La política se nombra con el nombre corto y el rol del token es el identificador estandarizado.
+            var permission = Permission.Definitions.Single(
+                definition => Permission.ToRoleIdentifier(definition.Identifier) == mapping.NewIdentifier);
             client.DefaultRequestHeaders.Authorization = new("Bearer", CreateToken(roles: [mapping.NewIdentifier]));
-            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(Probe(mapping.NewIdentifier))).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(Probe(permission.Identifier))).StatusCode);
 
-            foreach (var rejected in new[] { mapping.OldIdentifier, "PERMISSION_" + mapping.OldIdentifier })
+            // El nombre corto sin prefijo, el nombre legado y su versión prefijada no autorizan.
+            foreach (var rejected in new[] { permission.Identifier, mapping.OldIdentifier, "PERMISSION_" + mapping.OldIdentifier })
             {
                 client.DefaultRequestHeaders.Authorization = new("Bearer", CreateToken(roles: [rejected]));
-                var response = await client.GetAsync(Probe(mapping.NewIdentifier));
+                var response = await client.GetAsync(Probe(permission.Identifier));
                 Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
                 Assert.Equal(string.Empty, await response.Content.ReadAsStringAsync());
             }
@@ -159,13 +156,13 @@ public sealed class AuthenticationTests : IDisposable
     }
 
     [Theory]
-    [InlineData(Role.ActivityAdmin, ClientId, HttpStatusCode.OK)]
-    [InlineData(Role.ActivitySuperAdmin, ClientId, HttpStatusCode.OK)]
+    [InlineData(Roles.Administrator, ClientId, HttpStatusCode.OK)]
+    [InlineData(Roles.SuperAdmin, ClientId, HttpStatusCode.OK)]
     [InlineData("ROLE_REPORT_ADMIN", ClientId, HttpStatusCode.Forbidden)]
     [InlineData("ROLE_ACTIVITY_ADMIN_EXTRA", ClientId, HttpStatusCode.Forbidden)]
     [InlineData("MY_ROLE_ACTIVITY_SUPERADMIN", ClientId, HttpStatusCode.Forbidden)]
-    [InlineData(Role.ActivityAdmin, "OtherClient", HttpStatusCode.Forbidden)]
-    [InlineData(Permission.EditTeachingActivity, "OtherClient", HttpStatusCode.Forbidden)]
+    [InlineData(Roles.Administrator, "OtherClient", HttpStatusCode.Forbidden)]
+    [InlineData("PERMISSION_ACTIVITY_EDIT_TEACHING_ACTIVITY", "OtherClient", HttpStatusCode.Forbidden)]
     public async Task Only_exact_activity_administrative_roles_from_the_configured_client_override_permissions(
         string role, string roleClient, HttpStatusCode expected)
     {
@@ -173,7 +170,7 @@ public sealed class AuthenticationTests : IDisposable
         using var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new("Bearer", CreateToken(roles: [role], roleClient: roleClient));
 
-        var response = await client.GetAsync(Probe(Permission.EditTeachingActivity));
+        var response = await client.GetAsync(Probe(Permission.EDIT_TEACHING_ACTIVITY));
         Assert.Equal(expected, response.StatusCode);
         Assert.Equal(expected == HttpStatusCode.OK ? "allowed" : string.Empty,
             await response.Content.ReadAsStringAsync());
@@ -186,7 +183,7 @@ public sealed class AuthenticationTests : IDisposable
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.Unauthorized,
-            (await client.GetAsync(Probe(Permission.EditTeachingActivity))).StatusCode);
+            (await client.GetAsync(Probe(Permission.EDIT_TEACHING_ACTIVITY))).StatusCode);
         // La consulta existe y falla cerrada sin identidad; la escritura sigue sin implementarse.
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/activities?date=2026-01-05&category=0")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsync("/api/activities", null)).StatusCode);
@@ -198,19 +195,22 @@ public sealed class AuthenticationTests : IDisposable
         var mappings = ReadDocumentedMappings();
         Assert.Equal(14, Permission.Definitions.Count);
         Assert.Equal(Permission.Definitions.Count, mappings.Count);
-        Assert.Equal(Permission.Definitions.Select(item => item.Identifier).Order(),
+        Assert.Equal(Permission.Definitions.Select(item => Permission.ToRoleIdentifier(item.Identifier)).Order(),
             mappings.Select(item => item.NewIdentifier).Order());
         Assert.All(Permission.Definitions, definition =>
         {
-            Assert.Matches("^PERMISSION_ACTIVITY_(CREATE|EDIT|DELETE|VIEW|ACCESS)_[A-Z0-9_]+$", definition.Identifier);
+            // La constante es el nombre corto; el rol de Keycloak lleva el prefijo del estándar.
+            Assert.Matches("^ACTIVITY_[A-Z0-9_]+$", definition.Identifier);
+            var roleIdentifier = Permission.ToRoleIdentifier(definition.Identifier);
+            Assert.Matches("^PERMISSION_ACTIVITY_(CREATE|EDIT|DELETE|VIEW|ACCESS)_[A-Z0-9_]+$", roleIdentifier);
             Assert.False(string.IsNullOrWhiteSpace(definition.Description));
-            Assert.DoesNotContain(' ', definition.Identifier);
+            Assert.DoesNotContain(' ', roleIdentifier);
         });
-        Assert.Equal(new[] { Role.ActivityAdmin, Role.ActivitySuperAdmin },
-            Role.Definitions.Select(definition => definition.Identifier));
-        Assert.All(Role.Definitions, definition => Assert.False(string.IsNullOrWhiteSpace(definition.Description)));
+        Assert.Equal(new[] { Roles.Administrator, Roles.SuperAdmin },
+            Roles.Definitions.Select(definition => definition.Identifier));
+        Assert.All(Roles.Definitions, definition => Assert.False(string.IsNullOrWhiteSpace(definition.Description)));
         var documentation = File.ReadAllText(FindRepositoryRoot().FullName + "/docs/permission-equivalences.md");
-        Assert.All(Role.Definitions, definition =>
+        Assert.All(Roles.Definitions, definition =>
         {
             Assert.Contains(definition.Identifier, documentation);
             Assert.Contains(definition.Description, documentation);
@@ -226,12 +226,12 @@ public sealed class AuthenticationTests : IDisposable
         Assert.All(legacyActions, mapping =>
             Assert.Matches("^SAD/Actividades/default\\.aspx\\.vb:(52|53|54|55|56|57|60|61|62|63|110|111)$", mapping.Source));
         // El acceso al módulo proviene de la viñeta del encabezado; la consulta es una definición nueva.
-        Assert.Contains(mappings, mapping => mapping.NewIdentifier == Permission.AccessModule
+        Assert.Contains(mappings, mapping => mapping.NewIdentifier == Permission.ToRoleIdentifier(Permission.ACTIVITY_ACCESS)
             && mapping.Source == "SAD/comunes/Header.ascx.vb:99");
-        Assert.Contains(mappings, mapping => mapping.NewIdentifier == Permission.ViewCalendar);
-        Assert.Equal(new[] { Role.ActivityAdmin, Role.ActivitySuperAdmin },
-            Role.Definitions.Select(item => item.Identifier).ToArray());
-        Assert.All(Role.Definitions, role => Assert.False(string.IsNullOrWhiteSpace(role.Description)));
+        Assert.Contains(mappings, mapping => mapping.NewIdentifier == Permission.ToRoleIdentifier(Permission.VIEW_CALENDAR));
+        Assert.Equal(new[] { Roles.Administrator, Roles.SuperAdmin },
+            Roles.Definitions.Select(item => item.Identifier).ToArray());
+        Assert.All(Roles.Definitions, role => Assert.False(string.IsNullOrWhiteSpace(role.Description)));
     }
 
     private WebApplicationFactory<Program> CreateFactory(
@@ -263,7 +263,7 @@ public sealed class AuthenticationTests : IDisposable
         var now = DateTime.UtcNow;
         var access = JsonSerializer.Serialize(new Dictionary<string, object>
         {
-            [roleClient] = new { roles = roles ?? [Permission.EditTeachingActivity] },
+            [roleClient] = new { roles = roles ?? [Permission.ToRoleIdentifier(Permission.EDIT_TEACHING_ACTIVITY)] },
         });
         var token = new JwtSecurityToken(
             issuer: defect == "issuer" ? "https://other.invalid/realms/other" : Issuer,

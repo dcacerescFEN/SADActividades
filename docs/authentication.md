@@ -20,7 +20,9 @@ JWT validation requires HTTPS metadata, the exact configured issuer (`{url}/real
 
 ## Standardized permission foundation
 
-Activity policies accept only identifiers catalogued in `docs/permission-equivalences.md`, using the format `PERMISSION_ACTIVITY_<DESCRIPTIVE_ACTION>`. The twelve raw legacy permission and service names are documentation mappings only and are never accepted as fallback claims.
+Activity policies are named with the short permission constant, for example `ACTIVITY_VIEW_CALENDAR`, following the SADInformes convention. The Keycloak role is always the standardized identifier `PERMISSION_ACTIVITY_<DESCRIPTIVE_ACTION>`, composed only through `Permission.ToRoleIdentifier`; never concatenate the prefix by hand. Roles and the mapping catalogue live in `docs/permission-equivalences.md`. The twelve raw legacy permission and service names are documentation mappings only and are never accepted as fallback claims.
+
+Because the policy is resolved by the `ACTIVITY_` prefix, an endpoint that declares the full `PERMISSION_ACTIVITY_*` identifier as its policy name fails at request time with "policy not found". Declare the constant, not the role identifier.
 
 The exact roles `ROLE_ACTIVITY_ADMIN` and `ROLE_ACTIVITY_SUPERADMIN`, when present under the configured client, satisfy all ACTIVITY-module policies without individual permissions. Similar suffixes, arbitrary role names, roles from another module, and roles from another client do not grant access. These role overrides do not bypass business validation. No impersonation capability is implemented in this unit.
 

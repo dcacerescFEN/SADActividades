@@ -1,15 +1,15 @@
 namespace Domain.Constants;
 
 /// <summary>Roles administrativos reconocidos para el módulo de Actividades.</summary>
-public static class Role
+public static class Roles
 {
-    public const string ActivityAdmin = "ROLE_ACTIVITY_ADMIN";
-    public const string ActivitySuperAdmin = "ROLE_ACTIVITY_SUPERADMIN";
+    public const string Administrator = "ROLE_ACTIVITY_ADMIN";
+    public const string SuperAdmin = "ROLE_ACTIVITY_SUPERADMIN";
 
     public static IReadOnlyList<RoleDefinition> Definitions { get; } =
     [
-        new(ActivityAdmin, "Otorga acceso completo a las funcionalidades del módulo Actividades, sin autorizar suplantación de usuarios."),
-        new(ActivitySuperAdmin, "Otorga acceso completo al módulo Actividades; la capacidad estándar de suplantación no se implementa en esta migración."),
+        new(Administrator, "Otorga acceso completo a las funcionalidades del módulo Actividades, sin autorizar suplantación de usuarios."),
+        new(SuperAdmin, "Otorga acceso completo al módulo Actividades; la capacidad estándar de suplantación no se implementa en esta migración."),
     ];
 }
 

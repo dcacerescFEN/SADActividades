@@ -26,8 +26,9 @@ interface ActivitySection {
   readonly destinations: readonly ActivityDestination[];
 }
 
-// Secciones del módulo. Cada entrada futura se agrega aquí junto con el permiso
-// PERMISSION_ACTIVITY_* que la habilite, y se oculta mientras falte el permiso.
+// Secciones del módulo. Cada entrada futura se agrega aquí junto con el nombre corto del
+// permiso que la habilite (el rol de Keycloak es PERMISSION_ + ese nombre), y se oculta
+// mientras falte el permiso.
 const ACTIVITY_SECTIONS: readonly ActivitySection[] = [
   {
     id: 'calendar',
@@ -40,7 +41,7 @@ const ACTIVITY_SECTIONS: readonly ActivitySection[] = [
         title: 'Calendario',
         icon: 'bi-calendar3',
         url: '/actividades',
-        permission: 'PERMISSION_ACTIVITY_VIEW_CALENDAR',
+        permission: 'ACTIVITY_VIEW_CALENDAR',
       },
     ],
   },

@@ -19,8 +19,11 @@ export const KEYCLOAK_FACTORY = new InjectionToken<(config: PublicKeycloakConfig
   'KEYCLOAK_FACTORY', { providedIn: 'root', factory: () => (config) => new Keycloak(config) },
 );
 
-/** Formato exacto de un permiso estándar del módulo; los nombres legados no encajan. */
-const ACTIVITY_PERMISSION_PATTERN = /^PERMISSION_ACTIVITY_[A-Z0-9_]+$/;
+/** Prefijo que Keycloak antepone al nombre corto de cada permiso del módulo. */
+const PERMISSION_ROLE_PREFIX = 'PERMISSION_';
+
+/** Formato del nombre corto de un permiso del módulo; los nombres legados no encajan. */
+const ACTIVITY_PERMISSION_PATTERN = /^ACTIVITY_[A-Z0-9_]+$/;
 
 /** Roles administrativos que satisfacen cualquier permiso del módulo, igual que la API. */
 const ACTIVITY_ADMIN_ROLES: readonly string[] = ['ROLE_ACTIVITY_ADMIN', 'ROLE_ACTIVITY_SUPERADMIN'];
@@ -141,16 +144,18 @@ export class AuthService {
   }
 
   /**
-   * Verifica un permiso estándar del módulo contra los roles del cliente
-   * configurado. Replica la regla de la API: los roles administrativos del
-   * módulo satisfacen cualquier permiso, los nombres legados y los roles de
-   * otros clientes o de realm nunca se aceptan.
+   * Verifica un permiso del módulo por su nombre corto contra los roles del cliente
+   * configurado. Keycloak publica el rol como PERMISSION_ + nombre corto, igual que la
+   * API: los roles administrativos del módulo satisfacen cualquier permiso, mientras que
+   * los nombres legados, el identificador completo y los roles de otros clientes o de
+   * realm nunca se aceptan.
    */
   hasPermission(permission: string): boolean {
     if (!this.authenticated()) return false;
     if (!ACTIVITY_PERMISSION_PATTERN.test(permission)) return false;
+    const roleIdentifier = PERMISSION_ROLE_PREFIX + permission;
     const roles = this.clientRoles();
-    return roles.includes(permission)
+    return roles.includes(roleIdentifier)
       || ACTIVITY_ADMIN_ROLES.some(role => roles.includes(role));
   }
 
