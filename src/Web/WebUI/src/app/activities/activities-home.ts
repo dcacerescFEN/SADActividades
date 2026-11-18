@@ -1,8 +1,9 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { firstValueFrom } from 'rxjs';
+import { Table, type TableAction, type TableColumn } from '../shared/components/table';
 
 interface ApiResponse<T> { success: boolean; message: string; data: T; }
 interface Option { value: string; text: string; }
@@ -19,29 +20,8 @@ interface ActivityDetail {
 }
 
 @Component({
-  selector: 'app-table',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <div class="table-responsive">
-      <table class="app-table">
-        <thead><tr><th>Actividad</th><th>Curso</th><th>Profesor</th><th>Categoría</th><th>Tipo</th><th>Fecha</th><th>Horario</th><th>Ubicación</th><th>Publicar</th><th>Suspendida</th><th>Detalle</th></tr></thead>
-        <tbody>
-          @for (row of rows(); track row.id) {
-            <tr><td>{{ row.title }}</td><td>{{ row.course || '—' }}</td><td>{{ row.professor || '—' }}</td><td>{{ row.category }}</td><td>{{ row.type }}</td><td>{{ row.date || '—' }}</td><td>{{ row.start || '—' }}–{{ row.end || '—' }}</td><td>{{ row.rooms || '—' }}</td><td>{{ row.published ? 'Sí' : 'No' }}</td><td>{{ row.suspended ? 'Sí' : 'No' }}</td><td><button type="button" class="icon-action" title="Ver detalle" [attr.aria-label]="'Ver detalle de ' + row.title" (click)="select(row.id)">ⓘ</button></td></tr>
-          }
-        </tbody>
-      </table>
-    </div>`,
-})
-export class ActivityTable {
-  readonly rows = input<readonly ActivityRow[]>([]);
-  readonly selected = output<number>();
-  protected select(id: number): void { this.selected.emit(id); }
-}
-
-@Component({
   selector: 'app-activities-home',
-  imports: [ReactiveFormsModule, NgSelectModule, ActivityTable],
+  imports: [ReactiveFormsModule, NgSelectModule, Table],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page-header"><h1 class="page-title">Calendario de Actividades</h1><p class="page-subtitle">Consulta diaria de actividades docentes y no docentes.</p></div>
@@ -57,7 +37,7 @@ export class ActivityTable {
     @if (loading()) { <p role="status">Cargando actividades…</p> }
     @if (error()) { <div role="alert" class="alert">{{ error() }}</div> }
     @if (loaded() && !loading() && !error() && rows().length === 0) { <p role="status">No hay actividades para este día.</p> }
-    @if (rows().length > 0) { <section class="form-section"><h2 class="section-title">Actividades del día</h2><app-table [rows]="rows()" (selected)="loadDetail($event)" /><p>Total: {{ rows().length }}</p></section> }
+    @if (rows().length > 0) { <section class="form-section"><h2 class="section-title">Actividades del día</h2><app-table [rows]="rows()" [columns]="columns" (actionEvent)="handleAction($event)" /><p>Total: {{ rows().length }}</p></section> }
     @if (detail(); as item) { <aside class="detail-panel" aria-label="Detalle de actividad"><h2>{{ item.title }}</h2><p>{{ item.description || 'Sin descripción.' }}</p><dl><dt>Tipo</dt><dd>{{ item.type }}</dd><dt>Curso</dt><dd>{{ item.courseCode || '—' }} {{ item.section }}</dd><dt>Fecha y hora</dt><dd>{{ item.date || '—' }} {{ item.start || '' }}–{{ item.end || '' }}</dd><dt>Ubicación</dt><dd>{{ item.rooms || '—' }}</dd><dt>Publicada</dt><dd>{{ item.published ? 'Sí' : 'No' }}</dd></dl><button type="button" class="btn btn-clear" (click)="detail.set(null)">Cerrar</button></aside> }
   `,
   styles: `.filters-grid{display:grid;grid-template-columns:repeat(4,minmax(10rem,1fr)) auto;gap:1rem;align-items:end}.detail-panel{margin-top:1rem;padding:1rem;background:#fff;border:1px solid #ccd7e5}@media(max-width:900px){.filters-grid{grid-template-columns:1fr}}`,
@@ -67,6 +47,33 @@ export class ActivitiesHome {
   readonly form = inject(FormBuilder).nonNullable.group({
     date: new Date().toISOString().slice(0, 10), category: '-100', sector: 'TODOS', location: 'TODAS',
   });
+  // Columnas del calendario con la misma información y textos que la tabla anterior.
+  protected readonly columns: readonly TableColumn[] = [
+    { key: 'title', name: 'Actividad' },
+    { key: 'course', name: 'Curso' },
+    { key: 'professor', name: 'Profesor' },
+    { key: 'category', name: 'Categoría' },
+    { key: 'type', name: 'Tipo' },
+    { key: 'date', name: 'Fecha' },
+    { key: 'schedule', name: 'Horario', format: row => {
+      const activity = row as ActivityRow;
+      return `${activity.start || '—'}–${activity.end || '—'}`;
+    } },
+    { key: 'rooms', name: 'Ubicación' },
+    { key: 'published', name: 'Publicar', format: row => ((row as ActivityRow).published ? 'Sí' : 'No') },
+    { key: 'suspended', name: 'Suspendida', format: row => ((row as ActivityRow).suspended ? 'Sí' : 'No') },
+    {
+      key: 'detail',
+      name: 'Detalle',
+      action: {
+        icon: 'bi-info-circle',
+        label: 'Ver detalle',
+        actionKey: 'detail',
+        iconOnly: true,
+        ariaLabel: row => `Ver detalle de ${(row as ActivityRow).title}`,
+      } satisfies TableAction,
+    },
+  ];
   protected readonly catalogs = signal<Catalogs>({ categories: [{ value: '-100', text: 'Todas' }, { value: '1', text: 'Docentes' }, { value: '0', text: 'No docentes' }], types: [], sectors: [{ value: 'TODOS', text: 'Todos' }], locations: [{ value: 'TODAS', text: 'Todas' }] });
   protected readonly rows = signal<ActivityRow[]>([]);
   protected readonly detail = signal<ActivityDetail | null>(null);
@@ -89,6 +96,12 @@ export class ActivitiesHome {
     // Las ubicaciones dependen del sector elegido, igual que en el calendario legado.
     this.form.controls.sector.valueChanges.subscribe(() => void this.loadCatalogs());
     void this.loadCatalogs();
+  }
+
+  /** Abre el detalle cuando la tabla emite la acción de la fila. */
+  protected handleAction(event: { id: string | number | null; actionKey: string }): void {
+    if (event.actionKey !== 'detail' || typeof event.id !== 'number') return;
+    void this.loadDetail(event.id);
   }
 
   protected async loadCatalogs(): Promise<void> {
