@@ -105,6 +105,83 @@ describe('Keycloak authentication', () => {
     expect(auth.error()).toBe('No fue posible iniciar la autenticación.');
     expect(auth.isAuthenticated()).toBe(false);
   });
+
+  /** Abre una sesión de prueba con los datos del token indicados. */
+  async function authenticateWith(tokenParsed: Record<string, unknown>): Promise<void> {
+    adapter.authenticated = true;
+    adapter.token = 'signed-token';
+    adapter.tokenParsed = tokenParsed;
+    adapter.init.mockResolvedValue(true);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(config)));
+    await auth.initialize();
+  }
+
+  /** Roles que el cliente configurado recibe en el token de prueba. */
+  function clientRoles(roles: string[], client = 'SADActividades'): Record<string, unknown> {
+    return { resource_access: { [client]: { roles } } };
+  }
+
+  it('expone el nombre visible del token sin espacios externos', async () => {
+    await authenticateWith({ preferred_username: 'usuario-prueba', name: '  Usuario Prueba  ' });
+
+    expect(auth.name()).toBe('Usuario Prueba');
+  });
+
+  it('deja el nombre vacío cuando el token no lo incluye', async () => {
+    await authenticateWith({ preferred_username: 'usuario-prueba' });
+
+    expect(auth.name()).toBe('');
+  });
+
+  it('niega cualquier permiso cuando no hay sesión iniciada', async () => {
+    adapter.tokenParsed = clientRoles(['PERMISSION_ACTIVITY_VIEW_CALENDAR', 'ROLE_ACTIVITY_ADMIN']);
+    adapter.init.mockResolvedValue(false);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(config)));
+
+    await auth.initialize();
+
+    expect(auth.isAuthenticated()).toBe(false);
+    expect(auth.hasPermission('PERMISSION_ACTIVITY_VIEW_CALENDAR')).toBe(false);
+  });
+
+  it('concede el permiso exacto otorgado al cliente configurado', async () => {
+    await authenticateWith(clientRoles(['PERMISSION_ACTIVITY_VIEW_CALENDAR']));
+
+    expect(auth.hasPermission('PERMISSION_ACTIVITY_VIEW_CALENDAR')).toBe(true);
+    expect(auth.hasPermission('PERMISSION_ACTIVITY_CREATE_TEACHING_ACTIVITY')).toBe(false);
+  });
+
+  it('concede los permisos del módulo a los roles administrativos', async () => {
+    await authenticateWith(clientRoles(['ROLE_ACTIVITY_ADMIN']));
+
+    expect(auth.hasPermission('PERMISSION_ACTIVITY_VIEW_CALENDAR')).toBe(true);
+    expect(auth.hasPermission('PERMISSION_ACTIVITY_DELETE_NON_TEACHING_ACTIVITY')).toBe(true);
+  });
+
+  it('reconoce también al superadministrador del módulo', async () => {
+    await authenticateWith(clientRoles(['ROLE_ACTIVITY_SUPERADMIN']));
+
+    expect(auth.hasPermission('PERMISSION_ACTIVITY_EDIT_ROOM_ASSIGNMENT')).toBe(true);
+  });
+
+  it('rechaza los roles de otros clientes y los roles de realm', async () => {
+    await authenticateWith({
+      resource_access: {
+        SADInformes: { roles: ['PERMISSION_ACTIVITY_VIEW_CALENDAR', 'ROLE_ACTIVITY_ADMIN'] },
+      },
+      realm_access: { roles: ['PERMISSION_ACTIVITY_VIEW_CALENDAR', 'ROLE_ACTIVITY_ADMIN'] },
+    });
+
+    expect(auth.hasPermission('PERMISSION_ACTIVITY_VIEW_CALENDAR')).toBe(false);
+  });
+
+  it('rechaza los nombres legados y los permisos de otros módulos', async () => {
+    await authenticateWith(clientRoles(['Viñeta Actividades', 'PERMISSION_REPORT_ACCESS_MODULE']));
+
+    expect(auth.hasPermission('Viñeta Actividades')).toBe(false);
+    expect(auth.hasPermission('PERMISSION_REPORT_ACCESS_MODULE')).toBe(false);
+    expect(auth.hasPermission('PERMISSION_ACTIVITY_VIEW_CALENDAR')).toBe(false);
+  });
 });
 
 describe('Authentication guard and token scope', () => {

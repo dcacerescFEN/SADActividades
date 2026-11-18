@@ -25,6 +25,8 @@ describe('shell de SADActividades', () => {
             status,
             error,
             username: signal('usuario'),
+            name: signal('Usuario de Prueba'),
+            hasPermission: (permission: string) => permission === 'PERMISSION_ACTIVITY_VIEW_CALENDAR',
             logout: vi.fn().mockResolvedValue(undefined),
           },
         },
