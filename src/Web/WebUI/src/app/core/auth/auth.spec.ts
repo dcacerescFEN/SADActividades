@@ -185,6 +185,54 @@ describe('Keycloak authentication', () => {
     expect(auth.hasPermission('REPORT_ACCESS_MODULE')).toBe(false);
     expect(auth.hasPermission('ACTIVITY_VIEW_CALENDAR')).toBe(false);
   });
+
+  it('expone el claim resource_access y concede acceso solo al cliente exacto', async () => {
+    const resourceAccess = {
+      SADActividades: { roles: ['PERMISSION_ACTIVITY_ACCESS_MODULE'] },
+      'SADInformes-iis': { roles: ['PERMISSION_REPORT_ACCESS_REPORT_MODULE'] },
+    };
+    await authenticateWith({ preferred_username: 'usuario-prueba', resource_access: resourceAccess });
+
+    expect(auth.resourceAccess()).toEqual(resourceAccess);
+    expect(auth.hasSiteAccess('SADActividades')).toBe(true);
+    expect(auth.hasSiteAccess('SADInformes-iis')).toBe(true);
+    expect(auth.hasSiteAccess('SADInformes')).toBe(false);
+    expect(auth.hasSiteAccess('SADCursos')).toBe(false);
+  });
+
+  it('concede acceso al sitio con los roles administrativos del módulo', async () => {
+    await authenticateWith(clientRoles(['ROLE_ACTIVITY_ADMIN']));
+
+    expect(auth.hasSiteAccess('SADActividades')).toBe(true);
+    expect(auth.hasSiteAccess('SADAlumnos')).toBe(false);
+  });
+
+  it('no acepta el nombre corto sin el prefijo PERMISSION_ como rol del sitio', async () => {
+    await authenticateWith(clientRoles(['ACTIVITY_ACCESS_MODULE']));
+
+    expect(auth.hasSiteAccess('SADActividades')).toBe(false);
+  });
+
+  it('niega el acceso a los sitios cuando no hay sesión iniciada', async () => {
+    adapter.tokenParsed = clientRoles(['PERMISSION_ACTIVITY_ACCESS_MODULE']);
+    adapter.init.mockResolvedValue(false);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(config)));
+
+    await auth.initialize();
+
+    expect(auth.isAuthenticated()).toBe(false);
+    expect(auth.hasSiteAccess('SADActividades')).toBe(false);
+    expect(auth.resourceAccess()).toBeUndefined();
+  });
+
+  it('olvida el claim resource_access al cerrar sesión', async () => {
+    await authenticateWith(clientRoles(['ROLE_ACTIVITY_ADMIN']));
+
+    await auth.logout();
+
+    expect(auth.resourceAccess()).toBeUndefined();
+    expect(auth.hasSiteAccess('SADActividades')).toBe(false);
+  });
 });
 
 describe('Authentication guard and token scope', () => {

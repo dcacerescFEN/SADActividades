@@ -1,5 +1,6 @@
 import { Injectable, InjectionToken, inject, signal } from '@angular/core';
 import Keycloak from 'keycloak-js';
+import { hasClientAccess, hasClientPermission } from './site-access';
 
 export const AUTH_STATUS = {
   INITIALIZING: 'initializing',
@@ -19,14 +20,8 @@ export const KEYCLOAK_FACTORY = new InjectionToken<(config: PublicKeycloakConfig
   'KEYCLOAK_FACTORY', { providedIn: 'root', factory: () => (config) => new Keycloak(config) },
 );
 
-/** Prefijo que Keycloak antepone al nombre corto de cada permiso del módulo. */
-const PERMISSION_ROLE_PREFIX = 'PERMISSION_';
-
 /** Formato del nombre corto de un permiso del módulo; los nombres legados no encajan. */
 const ACTIVITY_PERMISSION_PATTERN = /^ACTIVITY_[A-Z0-9_]+$/;
-
-/** Roles administrativos que satisfacen cualquier permiso del módulo, igual que la API. */
-const ACTIVITY_ADMIN_ROLES: readonly string[] = ['ROLE_ACTIVITY_ADMIN', 'ROLE_ACTIVITY_SUPERADMIN'];
 
 function isConfiguration(value: unknown): value is PublicKeycloakConfig {
   if (typeof value !== 'object' || value === null) return false;
@@ -78,7 +73,7 @@ export class AuthService {
   private readonly authenticated = signal(false);
   private readonly user = signal('');
   private readonly displayName = signal('');
-  private readonly clientRoles = signal<readonly string[]>([]);
+  private readonly access = signal<unknown>(undefined);
   private clientId = '';
 
   readonly status = this.authStatus.asReadonly();
@@ -86,6 +81,8 @@ export class AuthService {
   readonly isAuthenticated = this.authenticated.asReadonly();
   readonly username = this.user.asReadonly();
   readonly name = this.displayName.asReadonly();
+  /** Claim `resource_access` del token; `undefined` cuando no hay sesión iniciada. */
+  readonly resourceAccess = this.access.asReadonly();
 
   async initialize(): Promise<void> {
     this.authStatus.set(AUTH_STATUS.INITIALIZING);
@@ -153,10 +150,12 @@ export class AuthService {
   hasPermission(permission: string): boolean {
     if (!this.authenticated()) return false;
     if (!ACTIVITY_PERMISSION_PATTERN.test(permission)) return false;
-    const roleIdentifier = PERMISSION_ROLE_PREFIX + permission;
-    const roles = this.clientRoles();
-    return roles.includes(roleIdentifier)
-      || ACTIVITY_ADMIN_ROLES.some(role => roles.includes(role));
+    return hasClientPermission(this.access(), this.clientId, permission);
+  }
+
+  /** Indica si el token concede acceso al sitio del cliente indicado. */
+  hasSiteAccess(clientId: string): boolean {
+    return this.authenticated() && hasClientAccess(this.access(), clientId);
   }
 
   private requireKeycloak(): Keycloak {
@@ -171,27 +170,14 @@ export class AuthService {
     this.user.set(authenticated && typeof username === 'string' ? username : '');
     const name: unknown = this.keycloak?.tokenParsed?.['name'];
     this.displayName.set(authenticated && typeof name === 'string' ? name.trim() : '');
-    this.clientRoles.set(authenticated ? this.tokenClientRoles() : []);
-  }
-
-  /** Lee los roles del cliente configurado desde `resource_access`; ignora `realm_access`. */
-  private tokenClientRoles(): string[] {
-    if (!this.clientId) return [];
-    const access: unknown = this.keycloak?.tokenParsed?.['resource_access'];
-    if (typeof access !== 'object' || access === null || Array.isArray(access)) return [];
-    if (!Object.prototype.hasOwnProperty.call(access, this.clientId)) return [];
-    const entry: unknown = (access as Record<string, unknown>)[this.clientId];
-    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) return [];
-    const roles: unknown = (entry as { roles?: unknown }).roles;
-    if (!Array.isArray(roles)) return [];
-    return roles.filter((role): role is string => typeof role === 'string');
+    this.access.set(authenticated ? this.keycloak?.tokenParsed?.['resource_access'] : undefined);
   }
 
   private clearSession(): void {
     this.authenticated.set(false);
     this.user.set('');
     this.displayName.set('');
-    this.clientRoles.set([]);
+    this.access.set(undefined);
   }
 
   private setUnavailable(message: string): void {

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './app';
 import { AUTH_STATUS, type AuthStatus } from './core/auth/auth-service';
 import { AuthService } from './core/auth/auth-service';
+import { NavigationService } from './core/navigation/navigation-service';
 
 describe('shell de SADActividades', () => {
   let authenticated: WritableSignal<boolean>;
@@ -28,6 +29,14 @@ describe('shell de SADActividades', () => {
             name: signal('Usuario de Prueba'),
             hasPermission: (permission: string) => permission === 'ACTIVITY_VIEW_CALENDAR',
             logout: vi.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: NavigationService,
+          useValue: {
+            links: signal([]),
+            error: signal(''),
+            load: vi.fn().mockResolvedValue(undefined),
           },
         },
       ],

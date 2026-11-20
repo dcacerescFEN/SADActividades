@@ -39,6 +39,18 @@ public static class Permission
         new(EDIT_GENESIS_ROOM_ASSIGNMENT, "Permite editar la asignación de salas del servicio Genesis."),
         new(EDIT_UNDERGRADUATE_SPACE_ROOM_ASSIGNMENT, "Permite editar la asignación de salas del servicio de espacios de pregrado."),
     ];
+
+    /// <summary>Nombres cortos de todos los permisos del catálogo, sin duplicar la lista.</summary>
+    public static IReadOnlyList<string> All { get; } =
+        Array.AsReadOnly(Definitions.Select(definition => definition.Identifier).ToArray());
+
+    /// <summary>
+    /// Compone el rol de Keycloak de un permiso anteponiendo el prefijo PERMISSION_. Es el único
+    /// lugar donde vive ese prefijo.
+    /// </summary>
+    /// <param name="permission">Nombre corto del permiso, tal como se declara en este catálogo.</param>
+    /// <returns>Identificador del rol publicado por Keycloak.</returns>
+    public static string ToRoleIdentifier(string permission) => "PERMISSION_" + permission;
 }
 
 /// <summary>Nombre corto del permiso y su descripción obligatoria en español.</summary>

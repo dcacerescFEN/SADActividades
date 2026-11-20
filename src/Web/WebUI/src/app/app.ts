@@ -2,11 +2,12 @@ import { ChangeDetectionStrategy, Component, inject, signal, viewChild } from '@
 import { RouterOutlet } from '@angular/router';
 import { AUTH_STATUS, AuthService } from './core/auth/auth-service';
 import { ActivitiesSidebar } from './core/layout/activities-sidebar';
+import { Footer } from './core/layout/footer';
 import { Header } from './core/layout/header';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, Header, ActivitiesSidebar],
+  imports: [RouterOutlet, Header, ActivitiesSidebar, Footer],
   template: `
     <div class="layout-shell">
       @if (auth.isAuthenticated()) {
@@ -21,7 +22,10 @@ import { Header } from './core/layout/header';
           @if (auth.status() === status.UNAVAILABLE) {
             <p role="alert">{{ auth.error() }}</p>
           }
-          <router-outlet />
+          <div class="layout-page-slot">
+            <router-outlet />
+          </div>
+          <app-footer />
         </main>
       </div>
     </div>

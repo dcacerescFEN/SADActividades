@@ -1,5 +1,6 @@
 using Application;
 using Infrastructure;
+using Infrastructure.Configuration;
 using Microsoft.AspNetCore.Authorization;
 using Scalar.AspNetCore;
 using WebApi;
@@ -38,6 +39,10 @@ app.Use(async (context, next) =>
 
     await next();
 });
+
+// La configuración de navegación se publica antes de autenticar: si AppConfig falla, el menú responde 503
+// y el resto de la API sigue disponible.
+await app.Services.InitialiseConfigurationAsync(builder.Configuration, app.Lifetime.ApplicationStopping);
 
 app.UseAuthentication();
 app.UseAuthorization();

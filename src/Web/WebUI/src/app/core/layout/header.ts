@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   NgbCollapseModule, NgbDropdown, NgbDropdownItem, NgbDropdownMenu, NgbDropdownToggle, NgbTooltip,
@@ -23,6 +23,9 @@ const EXTERNAL_LINKS = {
   mail: { url: 'http://g.fen.uchile.cl', label: 'Correo FEN' },
   password: { url: 'https://cuenta.fen.uchile.cl', label: 'Cambiar Contraseña' },
 } as const satisfies Record<string, ExternalLink>;
+
+/** Sitio que este shell representa; solo él se marca como actual en la barra. */
+const ACTIVE_DESTINATION = 'activities';
 
 @Component({
   selector: 'app-header',
@@ -53,8 +56,10 @@ const EXTERNAL_LINKS = {
           <ul class="navbar-nav me-auto">
             @for (item of navigation.links(); track item.key) {
               <li class="nav-item">
-                <a class="nav-link header-nav-link" [routerLink]="item.url" [attr.aria-label]="item.label"
-                  [class.active]="item.active" [attr.aria-current]="item.active ? 'page' : null"
+                <a class="nav-link header-nav-link" [attr.href]="item.url" [attr.aria-label]="item.label"
+                  [class.active]="item.key === activeDestination"
+                  [attr.aria-current]="item.key === activeDestination ? 'page' : null"
+                  [attr.aria-disabled]="item.url ? null : 'true'" [attr.tabindex]="item.url ? null : -1"
                   (click)="closeMenu()">
                   <i [class]="'bi ' + item.icon" aria-hidden="true"></i><span>{{ item.label }}</span>
                 </a>
@@ -101,6 +106,9 @@ const EXTERNAL_LINKS = {
         </div>
       </div>
     </nav>
+    @if (navigation.error()) {
+      <p class="navigation-status" role="alert">{{ navigation.error() }}</p>
+    }
     @if (actionError()) {
       <p class="navigation-status" role="alert">{{ actionError() }}</p>
     }
@@ -119,6 +127,7 @@ export class Header {
   protected readonly actionError = signal('');
   protected readonly menuCollapsed = signal(true);
   protected readonly externalLinks = EXTERNAL_LINKS;
+  protected readonly activeDestination = ACTIVE_DESTINATION;
   protected readonly themes: readonly ThemeChoice[] = [
     { key: 'light', label: 'Claro', icon: 'bi-sun-fill' },
     { key: 'dark', label: 'Oscuro', icon: 'bi-moon-stars-fill' },
@@ -127,6 +136,13 @@ export class Header {
   protected readonly themeIcon = computed(() => this.theme.preference() === 'auto'
     ? 'bi-circle-half'
     : this.theme.resolvedTheme() === 'dark' ? 'bi-moon-stars-fill' : 'bi-sun-fill');
+
+  constructor() {
+    // El menú publicado exige sesión: se pide una vez que la autenticación la habilita.
+    effect(() => {
+      if (this.auth.isAuthenticated()) void this.navigation.load();
+    });
+  }
 
   /** Alterna el menú de navegación colapsable de pantallas pequeñas. */
   protected toggleMenu(): void {

@@ -23,30 +23,52 @@ class HeaderHost {
   readonly events: boolean[] = [];
 }
 
+/** Enlaces que la barra recibe del menú publicado, con la pantalla actual incluida. */
+const LINKS: readonly NavigationLink[] = [
+  { key: 'student', label: 'Alumnos', icon: 'bi-person-badge', url: 'https://alumnos.example.test' },
+  { key: 'teacher', label: 'Profesores', icon: 'bi-person-lines-fill', url: 'https://profesores.example.test' },
+  { key: 'courses', label: 'Cursos', icon: 'bi-book', url: 'https://cursos.example.test' },
+  { key: 'exams', label: 'Exámenes', icon: 'bi-clipboard-check', url: 'https://examenes.example.test' },
+  { key: 'activities', label: 'Actividades', icon: 'bi-calendar-event', url: 'https://actividades.example.test' },
+  { key: 'assistants', label: 'Ayudantes', icon: 'bi-people', url: 'https://ayudantes.example.test' },
+  { key: 'processes', label: 'Procesos', icon: 'bi-gear', url: 'https://procesos.example.test' },
+  { key: 'reports', label: 'Informes', icon: 'bi-file-earmark-bar-graph', url: 'https://informes.example.test' },
+  {
+    key: 'administration', label: 'Administración', icon: 'bi-shield-lock',
+    url: 'https://administracion.example.test',
+  },
+];
+
 describe('encabezado del shell', () => {
   const logout = vi.fn();
   const setPreference = vi.fn();
+  const authenticated = signal(true);
   const preference = signal<ThemePreference>('auto');
   const resolvedTheme = signal<'light' | 'dark'>('light');
-  const links = signal<NavigationLink[]>([]);
+  const links = signal<NavigationLink[]>([...LINKS]);
+  const navigationError = signal('');
+  const load = vi.fn().mockResolvedValue(undefined);
 
   beforeEach(() => {
     logout.mockReset().mockResolvedValue(undefined);
+    load.mockClear();
     setPreference.mockReset().mockImplementation((value: ThemePreference) => {
       preference.set(value);
       if (value !== 'auto') resolvedTheme.set(value);
     });
+    authenticated.set(true);
     preference.set('auto');
     resolvedTheme.set('light');
-    links.set([{
-      key: 'calendar', label: 'Calendario de Actividades', icon: 'bi-calendar-event',
-      url: '/actividades', active: true,
-    }]);
+    links.set([...LINKS]);
+    navigationError.set('');
     TestBed.configureTestingModule({
       providers: [
         provideRouter([{ path: 'actividades', component: ActivitiesPage }]),
-        { provide: AuthService, useValue: { username: signal('usuario'), logout } },
-        { provide: NavigationService, useValue: { links } },
+        { provide: AuthService, useValue: { username: signal('usuario'), isAuthenticated: authenticated, logout } },
+        {
+          provide: NavigationService,
+          useValue: { links, error: navigationError, load },
+        },
         { provide: ThemeStore, useValue: { preference, resolvedTheme, setPreference } },
       ],
     });
@@ -59,7 +81,7 @@ describe('encabezado del shell', () => {
     return fixture;
   }
 
-  it('muestra la marca con el logo institucional y los destinos del módulo', () => {
+  it('muestra la marca institucional y los nueve sitios del menú', () => {
     const fixture = create();
     const root: HTMLElement = fixture.nativeElement;
     const nav = root.querySelector('nav');
@@ -71,30 +93,64 @@ describe('encabezado del shell', () => {
     expect(root.querySelector('a.navbar-brand img')?.getAttribute('src')).toBe('/logo-fen-white-letters.svg');
     expect(root.querySelector('a.navbar-brand img')?.getAttribute('alt')).toContain('FEN');
 
-    const anchors = [...root.querySelectorAll('a.header-nav-link')] as HTMLAnchorElement[];
-    expect(anchors).toHaveLength(1);
-    expect(anchors[0].getAttribute('aria-label')).toBe('Calendario de Actividades');
-    expect(anchors[0].textContent).toContain('Calendario de Actividades');
-    expect(anchors[0].querySelector('i.bi-calendar-event')).not.toBeNull();
-    expect(anchors[0].classList.contains('active')).toBe(true);
-    expect(anchors[0].getAttribute('aria-current')).toBe('page');
-    expect(root.textContent).not.toContain('Informes');
+    const anchors = [...root.querySelectorAll<HTMLAnchorElement>('a.header-nav-link')];
+    expect(anchors.map(anchor => anchor.getAttribute('aria-label'))).toEqual(LINKS.map(link => link.label));
+    expect(anchors.map(anchor => anchor.getAttribute('href'))).toEqual(LINKS.map(link => link.url));
+    expect(anchors[4].textContent).toContain('Actividades');
+    expect(anchors[4].querySelector('i.bi-calendar-event')).not.toBeNull();
   });
 
-  it('marca como actual únicamente el destino activo del servicio', () => {
+  it('marca Actividades como el sitio actual y ningún otro destino', () => {
+    const fixture = create();
+    const root: HTMLElement = fixture.nativeElement;
+    const anchors = [...root.querySelectorAll<HTMLAnchorElement>('a.header-nav-link')];
+
+    expect(anchors[4].classList.contains('active')).toBe(true);
+    expect(anchors[4].getAttribute('aria-current')).toBe('page');
+    for (const anchor of anchors.filter((_, index) => index !== 4)) {
+      expect(anchor.classList.contains('active')).toBe(false);
+      expect(anchor.hasAttribute('aria-current')).toBe(false);
+    }
+  });
+
+  it('muestra solo los destinos con acceso y deshabilita el que no tiene URL válida', () => {
     links.set([
-      { key: 'calendar', label: 'Calendario de Actividades', icon: 'bi-calendar-event', url: '/actividades', active: true },
-      { key: 'history', label: 'Historial', icon: 'bi-clock-history', url: '/actividades/historial', active: false },
+      { key: 'activities', label: 'Actividades', icon: 'bi-calendar-event', url: 'https://actividades.example.test' },
+      { key: 'reports', label: 'Informes', icon: 'bi-file-earmark-bar-graph', url: null },
     ]);
     const fixture = create();
     const root: HTMLElement = fixture.nativeElement;
     const anchors = [...root.querySelectorAll<HTMLAnchorElement>('a.header-nav-link')];
 
     expect(anchors).toHaveLength(2);
-    expect(anchors[0].classList.contains('active')).toBe(true);
-    expect(anchors[0].getAttribute('aria-current')).toBe('page');
+    expect(root.textContent).not.toContain('Alumnos');
+    expect(anchors[1].getAttribute('aria-label')).toBe('Informes');
+    expect(anchors[1].hasAttribute('href')).toBe(false);
+    expect(anchors[1].getAttribute('aria-disabled')).toBe('true');
+    expect(anchors[1].getAttribute('tabindex')).toBe('-1');
     expect(anchors[1].classList.contains('active')).toBe(false);
-    expect(anchors[1].hasAttribute('aria-current')).toBe(false);
+  });
+
+  it('carga el menú publicado cuando hay sesión iniciada', () => {
+    create();
+
+    expect(load).toHaveBeenCalledOnce();
+  });
+
+  it('no pide el menú publicado sin sesión iniciada', () => {
+    authenticated.set(false);
+    create();
+
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  it('avisa en español cuando la navegación no está disponible', () => {
+    navigationError.set('No se pudo cargar la navegación.');
+    const fixture = create();
+    const root: HTMLElement = fixture.nativeElement;
+    const alert = root.querySelector('[role="alert"]');
+
+    expect(alert?.textContent).toContain('No se pudo cargar la navegación.');
   });
 
   it('expone los controles de escritorio y móvil con su estado ARIA', () => {
@@ -125,7 +181,7 @@ describe('encabezado del shell', () => {
     expect(root.querySelector('[data-sidebar-mode]')).toBeNull();
   });
 
-  it('alterna el menú colapsable y lo cierra al elegir un destino', () => {
+  it('alterna el menú colapsable y lo cierra al elegir un sitio', () => {
     const fixture = create();
     const root: HTMLElement = fixture.nativeElement;
     const toggle = root.querySelector<HTMLButtonElement>('.navbar-toggler')!;
@@ -210,6 +266,8 @@ describe('encabezado del shell', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(root.querySelector('[role="alert"]')?.textContent).toContain('No se pudo cerrar sesión. Intenta nuevamente.');
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain(
+      'No se pudo cerrar sesión. Intenta nuevamente.',
+    );
   });
 });
